@@ -3,7 +3,7 @@
 
 
 
-void printD(int a);
+void printD(int a);//他ファイルから読み出し用
 
 
 #endif 

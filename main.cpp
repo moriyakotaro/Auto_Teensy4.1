@@ -1,12 +1,8 @@
 #include <Arduino.h>
 #include "DualShock.h"
-// #include "Drive_.h"
 #include "function.h"
-// #include <mpu6050.h>
 #include <Metro.h>
 #include <Encoder.h>
-// #include <teensy.h>
-// #include "Sonoterm_forArduino.h"
 #include <FlexCAN_T4.h>
 #include "CAN.h"
 #include "RobomasMotor.h"
@@ -17,10 +13,7 @@
 #include <utility/imumaths.h>
 #include <SPI.h>
 #include "drive.h"
-// #include "omuni_driver.h"
-// #include "manual.h"
-// #include "mars_bone.h"
-// #include "pwm_poscontrol.h"
+#include "1.Operate.h"
 
 #define HWSERIAL Serial4
 // #define PI 3.14159265358979
@@ -67,6 +60,12 @@ double y_val;
 double x_keep[2];
 double y_keep[2];
 
+double angle[4] = {0};
+double x_rate[2],y_rate[2];
+double sita1;
+double diff = 0;
+int count = 0;
+
 bool rotation_sign;
 int8_t rotation_num=0;
 double rotation_delta=0;
@@ -76,9 +75,6 @@ uint8_t led_count = 0;
 
 Adafruit_BNO055 bno = Adafruit_BNO055(-1, 0x28, &Wire);
 
-//////////////////////////
-
-////////////////////////
 
 // CanControl DriveCan1(1);//robomas
 CanControl DriveCan2(2);//robomas
@@ -87,18 +83,12 @@ Motor motor(MOTOR_COUNT,SMOOTH_SLOW,SMOOTH_NORMAL,RISING_PWM,SMALL_PWM);
 Drive AutoDrive(motor,CONTROL_CYCLE/1000);
 DJIMotor SpdControl(&DriveCan2,CONTROL_CYCLE/1000,MOTOR_COUNT);
 
-// Encoder driveX_enc(38,39);
-// Encoder drivey_enc(40,41);
 Encoder enc_x(ENCODER_X_A,ENCODER_X_B);
 Encoder enc_y(ENCODER_Y_A,ENCODER_Y_B);
 
-//Sonoterm term(115200);
 Metro debugTiming = Metro(5);
 Metro ControlTiming = Metro((motor_control_cycle));
-// Metro gyroTiming = Metro(10);
 Metro LEDTiming = Metro(500);
-// Metro Serialtiming = Metro(1);//マイコン間通信
-//速度が速すぎるためわざと遅くしている
 Metro gyaroTimming(GYAIRO_CYCLE);
 Metro ledTimming(LED_CYCLE);
 Metro encoderTimming(ENCODER_CYCLE);
@@ -132,7 +122,9 @@ void setup() {
 
 
 }
-double idou[5][3] = {{0,0,0},{45,0,PI/2},{45,45,PI},{0,45,PI/2},{0,0,0}};
+// double idou[5][3] = {{0,0,0},{45,0,PI/2},{45,45,PI},{0,45,PI/2},{0,0,0}};
+double idou[10][3] = {0};
+double damy[10][3] = {0};
 int c=0;
 
 uint8_t tx_data[8] = {0};
@@ -143,84 +135,49 @@ void loop() {
   // DriveCan1.CANAllDataRead();
   int incomingByte;
   // DriveCan1.CANAllDataRead();
-  // if(1){
-     //Serial.write(10);
-  
-    // if (Serial.available() > 0) {
-    //         //incomingByte = Serial.read();
-    //       //  control_data_receive(incomingByte);
-    //         // Serial.write(10);
-    //         // Serial.print("USB received: ");
-    //         // Serial.print(incomingByte, DEC);
-    //         // HWSERIAL.print("USB received:");
-    //         // HWSERIAL.print(incomingByte, DEC);
-
-    // }
     if (HWSERIAL.available() > 0) {
             incomingByte = HWSERIAL.read();
-            
             control_data_receive(incomingByte);
-            // Serial.print(HWSERIAL.available());
-            // Serial.write(10);
-            // Serial.print("USB received: ");
-            // Serial.print(incomingByte, DEC);
-            // Serial.print(incomingByte);
-            // HWSERIAL.write(ss++);
-            // Serial.println();
-            // if(ss>10000)ss=0;
-            
     }
-  // }
-//////////////////////////////////////
+///////////////////////////////////////ここを編集する
+  //example
+  // if(センサーの値)Auto(1);
+  // if(センサーの値)Auto(2);
+  // if(センサーの値)Auto(3); 等々
 
-  // monitoring = 0;
+  Auto(1);
+
+
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////
+
+
+
+  count = Idou(0,damy,idou);
+  sita1 = gyro_sence-PI/4;
+  if(sita1>PI)sita1 = sita1 - 2*PI;
   AutoDrive.now.r = gyro_sence;
-	AutoDrive.searchPosition(x_val,y_val);
+	AutoDrive.searchPosition(x_val,y_val,sita1);//gyro_sence+PI/4
   AutoDrive.to = Point(idou[c][0],idou[c][1],idou[c][2]);
-  if(idoutiming.check()){
-    if(c == 4)c=0;
-    if(c<4)c++;
+
+  diff = abs(AutoDrive.to.x - AutoDrive.now.x) + abs(AutoDrive.to.y - AutoDrive.now.y);
+  if(circle_button == 1){
+    if(diff < 3)c++;
+    if(c == count)c=0;
   }
+  
   AutoDrive.absoluteMove();
   AutoDrive.update();
-
-// anomalyDriveing(joystick_lx, -joystick_ly, joystick_rx, targets_rpm, gyro_sence);
-
-
-  targets_rpm[0] = 1000;
-  targets_rpm[1] = 1000;
-  targets_rpm[2] = 1000;
-  targets_rpm[3] = 1000;
-
-
-// for(int i=0;i<WHEEL_COUNT;i++){
-//   // targets_rpm[i] = 100;
-//   if(targets_rpm[i]<2000){
-//     targets_rpm[i] += 10;
-//   }
-// }
-
-// if(Button_switch(triangle_button) == 1){
-// //   for(int i=0;i<WHEEL_COUNT;i++){
-// // //     targets_rpm[i] = targets_rpm[i]/10;
-// //       targets_rpm[i] = 1000;
-// //   }
-
-//   targets_rpm[0] -= 1;
-//   targets_rpm[1] += 1;
-//   targets_rpm[2] -= 1;
-//   targets_rpm[3] += 1;
-// }
-// if(Button_switch(cross_button) == 1){
-
-
-//   targets_rpm[0] += 1;
-//   targets_rpm[1] -= 1;
-//   targets_rpm[2] += 1;
-//   targets_rpm[3] -= 1;
-// }
-
-
 
 
 for(int i=1;i<=WHEEL_COUNT;i++){
@@ -229,92 +186,39 @@ for(int i=1;i<=WHEEL_COUNT;i++){
         
 if(debugTiming.check()){                
   printD(1);
-  // for(int i=0;i<8;i++){
-  //   Serial.print(msg1.buf[i]);
-  //   Serial.print(",");
-  //   Serial.print(msg2.buf[i]);
-		
-	// }
-  //  Serial.print(HWSERIAL.available());
-  //  Serial.print(",");
-  // Serial.print(circle_button);
-  // Serial.print(",");
-  // Serial.print(triangle_button);
-  // Serial.print(",");
-  // Serial.print(square_button);
-  // Serial.print(",");
-  // Serial.print(cross_button);
-  // Serial.print(",");
-  // Serial.print(joystick_lx);
-  // Serial.print(",");
-  // Serial.print(joystick_ly);
-  // Serial.print(",");
-  // Serial.print(joystick_rx);
-  // Serial.print(",");
-  // Serial.print(joystick_ry);
-  // Serial.print(gyro_sence);
-  // Serial.print(",");
-  // Serial.print(targets_rpm[0]);
-  // Serial.print(",");
-  // Serial.print(targets_rpm[1]);
-  // Serial.print(",");
-  // Serial.print(targets_rpm[2]);
-  // Serial.print(",");
-  // Serial.print(targets_rpm[3]);
-  // Serial.println();
- // debugDisp();
-  // printMotor();
-  //term.dnl();
 }
 
-for(int i=1;i<=WHEEL_COUNT;i++){
+for(int i=1;i<=MOTOR_COUNT;i++){
   SpdControl.setTargetRPM(i,targets_rpm[i-1]);
+}
+if(NOMAL_DROVE){
+  if(NOMAL_MOVE)gyro_sence = 0;
+  anomalyDriveing(joystick_lx, -joystick_ly, joystick_rx, targets_rpm, gyro_sence);
+  for(int i=1;i<=MOTOR_COUNT;i++){
+    if(joystick_lx != 0 && joystick_ly != 0 && joystick_rx != 0)targets_rpm[i-1] = 0;
+    SpdControl.setTargetRPM(i,targets_rpm[i-1]);
+  }
+  
 }
 
 if(ControlTiming.check()){
-  // Serial.print(",");
-  // targets_rpm[1] = 100;
-  
-          
-  SpdControl.speedControl();
-  // spd = 0;
-  // tx_data[6] = spd>>8;
-  // tx_data[7] = spd&0xff;
-  // //DriveCan->CANDataPush(0x200,tx_data);
-  // //DriveCan->CANAllDataWrite();
-          
-  // sendM.id = 0x200;
-  // sendM.len = 8;
-  // sendM.buf[0] = 0;
-  // sendM.buf[1] = 0;
-  // sendM.buf[2] = 0;
-  // sendM.buf[3] = 0;
-  // sendM.buf[4] = 0;
-  // sendM.buf[5] = 0;
-  // sendM.buf[6] = tx_data[6];
-  // sendM.buf[7] = tx_data[7];
-  // //motor.rote(sendM);
+    SpdControl.speedControl(angle);
+    for(int kkk=0;kkk<4;kkk++){
+      if(angle[kkk] >= 4096)angle[kkk] = angle[kkk] - 8191;	
+      angle[kkk] = angle[kkk] / 8190;
+    }
+    Angle(angle);
+    for(int ppp=0;ppp<2;ppp++){
+        y_rate[ppp] = angle[2*ppp+1]*2*PI*55/19;
+        x_rate[ppp] = angle[2*ppp]*2*PI*55/19;
+    }
+    x_val = (x_rate[0]-x_rate[1])/2;
+    y_val = (y_rate[0]-y_rate[1])/2;
+    x_val = x_val / 30;
+    y_val = y_val / 30;
 }
 
 
-
-
-  // for(int i=1;i<=4;i++){
-  //   motor.setPIDgain(i,Pg,Ig,Dg);
-  // }
-  
-  // if(debugTiming.check()){
-  //   debugDisp();
-  //   // printMotor();
-  //   term.dnl();
-  // }
-  // if(ControlTiming.check()){
-
-
-  //   for(int i=1;i<=4;i++){
-  //     motor.setTargetRPM(i,targets_rpm[i-1]);
-  //   }
-    
 
 
 
@@ -324,32 +228,7 @@ if(ControlTiming.check()){
 
 
   getpalam();
-  getEncorder();
-
-
-
-
-
-  //   motor.speedControl();
-  //   spd = 0;
-  //   tx_data[6] = spd>>8;
-  //   tx_data[7] = spd&0xff;
-  //   //DriveCan->CANDataPush(0x200,tx_data);
-  //   //DriveCan->CANAllDataWrite();
-    
-  //   sendM.id = 0x200;
-  //   sendM.len = 8;
-  //   sendM.buf[0] = 0;
-  //   sendM.buf[1] = 0;
-  //   sendM.buf[2] = 0;
-  //   sendM.buf[3] = 0;
-  //   sendM.buf[4] = 0;
-  //   sendM.buf[5] = 0;
-  //   sendM.buf[6] = tx_data[6];
-  //   sendM.buf[7] = tx_data[7];
-  //   //motor.rote(sendM);
-  // }
-  //if(gyroTiming.check())gyro.update();
+  // getEncorder();
 
 
   //digitalWrite(24,term.key_l.press);
@@ -405,44 +284,6 @@ void getEncorder(){
 }
 
 
-void printMotor(){//not use
-  //term.disp(motor.rpm[ID]);
-  for(int i=0;i<4;i++){
-    //term.disp(targets_rpm[i]);
-  }
-  
-  /*
-  Serial.print(" ");
-  Serial.print(motor.x);*//*
-  term.advancedDisp(Pg,5);
-  term.advancedDisp(Ig,5);
-  term.advancedDisp(Dg,5);*/
-  /*
-  Serial.print(" ");
-  Serial.print(motor.y);*/
-  //term.disp(spd);
-/*
-  if(avarage_count % 10 != 0)smp_avarage10_rpm = (smp_avarage10_rpm + motor.rpm_data[ID])/2;
-  else avarage10_rpm = smp_avarage10_rpm;smp_avarage10_rpm = 0;
-  if(avarage_count <= 10000)avarage100_rpm = (avarage100_rpm + motor.rpm_data[ID])/2;
-  else avarage100_rpm = smp_avarage100_rpm;avarage_count = smp_avarage100_rpm = 0;
-  avarage_count++;
-  term.disp(avarage10_rpm);
-  term.disp(avarage100_rpm);*/
- /*
-  uint8_t data[8];
-  DriveCan->CANDataPull(0x204,data);
-  term.disp((data[0]<<8)+(data[1]&0xff));
-  term.disp((data[2]<<8)+(data[3]&0xff));
-  term.disp((data[4]<<8)+(data[5]&0xff));
-  term.disp(data[6]);*/
-  //term.dnl();
-  return;
-}
-void debugDisp(){//not use
-  //term.disp(gyro.angle);
-  //Serial.print(term.key_k.press);
-}
 
 void timer(void){
     monitoring++;
@@ -472,89 +313,13 @@ void timer(void){
 }
 
 
-void printD(int a){/*
-    Serial.print(roll);
-    
-    Serial.print(" ");
-    Serial.print(pitch);
-    Serial.print(" ");*/
+void printD(int a){
     Serial.print(a);
-    Serial.print(",");
-    Serial.print(AutoDrive.now.x);
-    Serial.print(" ");
-    Serial.print(AutoDrive.now.y);
-    Serial.print(" ");
-
-    // Serial.print(lxbf);
-    // Serial.print(",");
-    // Serial.print(lybf);
-    // Serial.print(",");
-    // Serial.print(rxbf);
-    // Serial.print(",,,");
-    // Serial.print(gyro_sence);
-    // Serial.print(",");
-    // Serial.print(targets_rpm[0]);
-    // Serial.print(",");
-    // Serial.print(targets_rpm[1]);
-    // Serial.print(",");
-    // Serial.print(targets_rpm[2]);
-    // Serial.print(",");
-    // Serial.print(targets_rpm[3]);
-    // Serial.print(lxaf);
-    // Serial.print(",");
-    // Serial.print(lyaf);
-    // Serial.print(",");
-    // Serial.print(rxaf);
-    // Serial.print(",,,");
-
-    // Serial.print(lx);
-    // Serial.print(",");
-    // Serial.print(ly);
-    // Serial.print(",");
-    // Serial.print(rx);
-    // Serial.print(",");
-    // Serial.print(con);
-    // Serial.print(" ");
-    // Serial.print(gyro_sence);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.now.x);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.now.y);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.to.x);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.to.y);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.nm.x,6);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.nm.y,6);
-    // Serial.print(" ");
-    // Serial.print(AutoDrive.nm.r,6);
-    // Serial.print(" ");
-    // for(int i=1;i<=4;i++){
-    //   Serial.print(AutoDrive.motor[i-1]);
-    //   Serial.print(" ");
-    //   Serial.print(SpdControl.angle[i]);
-    //   Serial.print(" ");
-    //   Serial.print(SpdControl.ampare[i],10);
-    //   Serial.print(" ");
-    //   Serial.print(SpdControl.ampare[i],10);
-    //   Serial.print(" ");
-    // }
-      // Serial.print(AutoDrive.spdd[0],6);
-      // Serial.print(" ");
     Serial.println();
 }
 
 int No = 0;
 void control_data_receive(int recive){
-  // static int No;
-// Serial.print(No);
-// Serial.print(monitoring);
-
-// Serial.print(recive);
-// Serial.print(" ");
-// Serial.print("\n");
   if(recive == 0x80){
     No = 0;
     data[No++] = 0x80;

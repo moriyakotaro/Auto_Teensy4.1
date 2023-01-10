@@ -46,7 +46,7 @@ class DJIMotor : public CanControl{
 
 		void setTargetRPM(uint8_t id,double _rpm); //目標rpmの設定
 		void setPIDgain(uint8_t id, double Kp ,double Ki ,double Kd); //PIDゲインの設定
-		void speedControl(); //速度制御関数 設定した制御周期で呼び出すこと
+		void speedControl(double *angle0); //速度制御関数 設定した制御周期で呼び出すこと
 		void updateMotorData(uint8_t id); //モーターのデータを更新
 		static void send();
 		bool checkIsContanct(uint8_t id); //CANの電源が入っているか

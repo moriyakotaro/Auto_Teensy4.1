@@ -105,7 +105,7 @@ void DJIMotor::updateMotorData(uint8_t id){
 	return;
 }
 
-void DJIMotor::speedControl(){
+void DJIMotor::speedControl(double *angle0){
 	if((canforDrive->CANAllDataRead()) == -1)return;
 
 	static CAN_message_t msg1;
@@ -143,6 +143,10 @@ void DJIMotor::speedControl(){
 	
 	if(is_msg1_data)canforDrive->CANMsgWrite(msg1);
 	if(is_msg2_data)canforDrive->CANMsgWrite(msg2);
+
+	for(int pp=0;pp<4;pp++){
+		angle0[pp] = angle[pp+1];
+	}
 
 	return;
 }
